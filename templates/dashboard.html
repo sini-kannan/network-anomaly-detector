@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Network Anomaly Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>Network Anomaly Detection Dashboard</h1>
+
+  <div id="stats">
+    <p><strong>Normal Connections:</strong> <span id="normal"></span></p>
+    <p><strong>Suspicious Connections:</strong> <span id="suspicious"></span></p>
+    <p><strong>Threats Blocked:</strong> <span id="blocked"></span></p>
+    <p><strong>Data Transferred (GB):</strong> <span id="data_gb"></span></p>
+  </div>
+
+  <canvas id="hourlyChart" width="800" height="300"></canvas>
+
+  <h2>Recent Threats</h2>
+  <table id="threatTable">
+    <thead>
+      <tr>
+        <th>Level</th>
+        <th>Title</th>
+        <th>Description</th>
+        <th>Timestamp</th>
+        <th>Source IP</th>
+        <th>Destination IP</th>
+        <th>Port</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    fetch('/api/analyze')
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('normal').textContent = data.status.normal_connections;
+        document.getElementById('suspicious').textContent = data.status.suspicious_connections;
+        document.getElementById('blocked').textContent = data.status.threats_blocked;
+        document.getElementById('data_gb').textContent = data.status.data_transfer_gb;
+
+        // Hourly traffic chart
+        const ctx = document.getElementById('hourlyChart').getContext('2d');
+        const hours = data.hourly_data.map(d => d.hour);
+        const sent = data.hourly_data.map(d => d.bytes_sent);
+        const received = data.hourly_data.map(d => d.bytes_received);
+
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: hours,
+            datasets: [
+              { label: 'Bytes Sent', data: sent, borderColor: 'blue', fill: false },
+              { label: 'Bytes Received', data: received, borderColor: 'green', fill: false }
+            ]
+          }
+        });
+
+        // Threat Table
+        const tbody = document.querySelector("#threatTable tbody");
+        data.recent_threats.forEach(threat => {
+          const row = `<tr>
+            <td>${threat.level}</td>
+            <td>${threat.title}</td>
+            <td>${threat.description}</td>
+            <td>${threat.timestamp}</td>
+            <td>${threat.source_ip}</td>
+            <td>${threat.dest_ip}</td>
+            <td>${threat.port}</td>
+          </tr>`;
+          tbody.innerHTML += row;
+        });
+      });
+  </script>
+</body>
+</html>
